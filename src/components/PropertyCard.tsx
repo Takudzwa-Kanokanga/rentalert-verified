@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -20,6 +21,7 @@ interface PropertyCardProps {
 }
 
 const PropertyCard = ({
+  id,
   title,
   location,
   price,
@@ -33,8 +35,13 @@ const PropertyCard = ({
   virtualTour,
   featured = false,
 }: PropertyCardProps) => {
+  const navigate = useNavigate();
+
   return (
-    <Card className="overflow-hidden hover:shadow-[var(--shadow-hover)] transition-[box-shadow,transform] hover:-translate-y-1 duration-300 group">
+    <Card 
+      className="overflow-hidden hover:shadow-[var(--shadow-hover)] transition-[box-shadow,transform] hover:-translate-y-1 duration-300 group cursor-pointer"
+      onClick={() => navigate(`/property/${id}`)}
+    >
       <div className="relative aspect-[4/3] overflow-hidden">
         <img
           src={image}
