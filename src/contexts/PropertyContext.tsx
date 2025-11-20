@@ -2,6 +2,9 @@ import React, { useState, useEffect, ReactNode } from "react";
 import {
   PropertyContext as CorePropertyContext,
   fetchPropertiesWithAgents,
+  createProperty,
+  updatePropertyById,
+  deletePropertyById,
   Property,
   PropertyContextType,
 } from "./propertyCore";
@@ -40,24 +43,48 @@ export const PropertyProvider = ({ children }: { children: ReactNode }) => {
   }, []); 
 
 
-  // NOTE: CRUD functions below are still using local state updates.
-  // For full persistence, you would need to update these to call Supabase 
-  // INSERT, UPDATE, and DELETE methods.
-  const addProperty = (property: Property) => {
-    // Supabase INSERT implementation required here
-    setProperties([...properties, property]);
+  // Persisted CRUD functions using Supabase helpers
+  const addProperty = async (property: Property) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const created = await createProperty(property);
+      if (created) setProperties((prev) => [...prev, created]);
+      return created;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const updateProperty = (id: string, updatedProperty: Partial<Property>) => {
-    // Supabase UPDATE implementation required here
-    setProperties(properties.map(p => 
-      p.id === id ? { ...p, ...updatedProperty } : p
-    ));
+  const updateProperty = async (id: string, updatedProperty: Partial<Property>) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const updated = await updatePropertyById(id, updatedProperty);
+      if (updated) {
+        setProperties((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
+      }
+      return updated;
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const deleteProperty = (id: string) => {
-    // Supabase DELETE implementation required here
-    setProperties(properties.filter(p => p.id !== id));
+  const deleteProperty = async (id: string) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      await deletePropertyById(id);
+      setProperties((prev) => prev.filter((p) => p.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const getPropertyById = (id: string) => {

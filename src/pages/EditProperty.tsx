@@ -67,7 +67,9 @@ const EditProperty = () => {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    updateProperty(property.id, {
+    const doUpdate = async () => {
+      try {
+        await updateProperty(property.id, {
       title: formData.title,
       location: formData.location,
       price: Number(formData.price),
@@ -80,10 +82,15 @@ const EditProperty = () => {
       featured: formData.featured,
       description: formData.description,
       amenities: formData.amenities.split(",").map(a => a.trim()).filter(Boolean),
-    });
+        });
+        toast({ title: "Property updated successfully!" });
+        navigate(`/property/${property.id}`);
+      } catch (err) {
+        toast({ title: "Failed to update property", description: String(err) });
+      }
+    };
 
-    toast({ title: "Property updated successfully!" });
-    navigate(`/property/${property.id}`);
+    void doUpdate();
   };
 
   return (

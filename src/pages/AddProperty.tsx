@@ -30,7 +30,7 @@ const AddProperty = () => {
     amenities: "",
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     const newProperty = {
@@ -58,9 +58,13 @@ const AddProperty = () => {
       amenities: formData.amenities.split(",").map(a => a.trim()).filter(Boolean),
     };
 
-    addProperty(newProperty);
-    toast({ title: "Property added successfully!" });
-    navigate(`/property/${newProperty.id}`);
+    try {
+      const created = await addProperty(newProperty as any);
+      toast({ title: "Property added successfully!" });
+      navigate(`/property/${(created && created.id) || newProperty.id}`);
+    } catch (err) {
+      toast({ title: "Failed to add property", description: String(err) });
+    }
   };
 
   return (

@@ -83,7 +83,7 @@ const Index = () => {
               <h2 className="text-3xl font-bold text-foreground mb-2">Featured Properties</h2>
               <p className="text-muted-foreground">Verified listings from trusted agents</p>
             </div>
-            <Button variant="outline" onClick={() => navigate("/browse")}>View All</Button>
+            <Button variant="outline" onClick={() => navigate("/browse")} className="text-black hover:text-primary transition-colors">View All</Button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {featuredProperties.map((property) => (
@@ -114,7 +114,7 @@ const Index = () => {
             <Button 
               size="lg" 
               variant="outline" 
-              className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary"
+              className="border-primary-foreground text-black hover:bg-primary-foreground hover:text-primary"
               onClick={() => navigate("/browse")}
             >
               Browse Properties

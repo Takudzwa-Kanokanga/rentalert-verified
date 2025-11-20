@@ -43,9 +43,9 @@ export type RawSupabaseProperty = {
 
 export interface PropertyContextType {
   properties: Property[];
-  addProperty: (property: Property) => void;
-  updateProperty: (id: string, property: Partial<Property>) => void;
-  deleteProperty: (id: string) => void;
+  addProperty: (property: Property) => Promise<Property | void>;
+  updateProperty: (id: string, property: Partial<Property>) => Promise<Property | void>;
+  deleteProperty: (id: string) => Promise<void>;
   getPropertyById: (id: string) => Property | undefined;
   savedProperties: string[];
   toggleSaveProperty: (id: string) => void;
@@ -101,6 +101,79 @@ export const fetchPropertiesWithAgents = async (): Promise<Property[]> => {
       properties_listed: 0,
     },
   }));
+};
+
+// Create a new property in Supabase
+export const createProperty = async (p: Partial<Property>): Promise<Property> => {
+  const insertObj: Record<string, unknown> = {
+    title: p.title,
+    location: p.location,
+    price: p.price,
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    area: p.area,
+    image_url: p?.image || null,
+    is_verified: p?.verified || false,
+    rating: p?.rating || 0,
+    reviews_count: p?.reviews || 0,
+    has_virtual_tour: p?.virtualTour || false,
+    is_featured: p?.featured || false,
+    description: p?.description || null,
+    amenities: p?.amenities || [],
+    agent_id: p?.agent?.id || null,
+  };
+
+  const { data, error } = await supabase.from("properties").insert([insertObj]).select();
+  if (error) {
+    console.error("Supabase Insert Error:", error);
+    throw error;
+  }
+
+  // After insert, re-fetch to get joined agent object
+  const all = await fetchPropertiesWithAgents();
+  // Return the created row mapped (find by id)
+  const created = all.find((r) => r.title === p.title && r.location === p.location && Number(r.price) === Number(p.price));
+  return (created as Property) || (all[all.length - 1] as Property);
+};
+
+// Update an existing property by id
+export const updatePropertyById = async (id: string, updated: Partial<Property>): Promise<Property> => {
+  const updateObj: Record<string, unknown> = {};
+  if (updated.title !== undefined) updateObj.title = updated.title;
+  if (updated.location !== undefined) updateObj.location = updated.location;
+  if (updated.price !== undefined) updateObj.price = updated.price;
+  if (updated.bedrooms !== undefined) updateObj.bedrooms = updated.bedrooms;
+  if (updated.bathrooms !== undefined) updateObj.bathrooms = updated.bathrooms;
+  if (updated.area !== undefined) updateObj.area = updated.area;
+  if (updated.image !== undefined) updateObj.image_url = updated.image;
+  if (updated.verified !== undefined) updateObj.is_verified = updated.verified;
+  if (updated.rating !== undefined) updateObj.rating = updated.rating;
+  if (updated.reviews !== undefined) updateObj.reviews_count = updated.reviews;
+  if (updated.virtualTour !== undefined) updateObj.has_virtual_tour = updated.virtualTour;
+  if (updated.featured !== undefined) updateObj.is_featured = updated.featured;
+  if (updated.description !== undefined) updateObj.description = updated.description;
+  if (updated.amenities !== undefined) updateObj.amenities = updated.amenities;
+  if (updated.agent !== undefined) updateObj.agent_id = updated.agent?.id || null;
+
+  const { data, error } = await supabase.from("properties").update(updateObj).eq("id", id).select();
+  if (error) {
+    console.error("Supabase Update Error:", error);
+    throw error;
+  }
+
+  const all = await fetchPropertiesWithAgents();
+  const updatedProp = all.find((p) => p.id === id);
+  if (!updatedProp) throw new Error("Updated property not found");
+  return updatedProp;
+};
+
+// Delete a property by id
+export const deletePropertyById = async (id: string): Promise<void> => {
+  const { error } = await supabase.from("properties").delete().eq("id", id);
+  if (error) {
+    console.error("Supabase Delete Error:", error);
+    throw error;
+  }
 };
 
 export const useProperties = () => {

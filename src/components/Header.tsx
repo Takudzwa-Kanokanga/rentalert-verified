@@ -3,6 +3,7 @@ import { Home, Search, Heart, Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { SignedIn, SignedOut, SignInButton, UserButton } from "@clerk/clerk-react";
 
 const Header = () => {
   const navigate = useNavigate();
@@ -45,16 +46,23 @@ const Header = () => {
         </nav>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" className="hidden md:flex">
-            Sign In
-          </Button>
-          <Button 
-            size="sm" 
-            className="hidden md:flex"
-            onClick={() => navigate("/add-property")}
-          >
-            List Property
-          </Button>
+          <div className="hidden md:flex items-center gap-2">
+            <SignedOut>
+              <SignInButton>
+                <Button variant="ghost" size="sm">Sign In</Button>
+              </SignInButton>
+            </SignedOut>
+            <SignedIn>
+              <UserButton afterSignOutUrl="/" />
+            </SignedIn>
+            <Button 
+              size="sm" 
+              className=""
+              onClick={() => navigate("/add-property")}
+            >
+              List Property
+            </Button>
+          </div>
 
           {/* Mobile Menu */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
