@@ -1,33 +1,62 @@
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import { Property, dummyProperties } from "@/lib/dummyData";
+import React, { useState, useEffect, ReactNode } from "react";
+import {
+  PropertyContext as CorePropertyContext,
+  fetchPropertiesWithAgents,
+  Property,
+  PropertyContextType,
+} from "./propertyCore";
 
-interface PropertyContextType {
-  properties: Property[];
-  addProperty: (property: Property) => void;
-  updateProperty: (id: string, property: Partial<Property>) => void;
-  deleteProperty: (id: string) => void;
-  getPropertyById: (id: string) => Property | undefined;
-  savedProperties: string[];
-  toggleSaveProperty: (id: string) => void;
-}
+// Use the context from the core module (this file only exports the provider component)
+const PropertyContext = CorePropertyContext;
 
-const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
 
 export const PropertyProvider = ({ children }: { children: ReactNode }) => {
-  const [properties, setProperties] = useState<Property[]>(dummyProperties);
+  // Initialize properties as an empty array, not dummyProperties
+  const [properties, setProperties] = useState<Property[]>([]); 
   const [savedProperties, setSavedProperties] = useState<string[]>([]);
+  // Initialize loading and error states
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+  
+  // Use useEffect to fetch data from Supabase on component mount
+  useEffect(() => {
+    const loadProperties = async () => {
+      setIsLoading(true);
+      setError(null);
+      try {
+        const fetchedProperties = await fetchPropertiesWithAgents();
+        setProperties(fetchedProperties);
+      } catch (err) {
+        if (err instanceof Error) {
+            setError(err);
+        } else {
+            setError(new Error("An unknown error occurred during property fetch."));
+        }
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    loadProperties();
+  }, []); 
 
+
+  // NOTE: CRUD functions below are still using local state updates.
+  // For full persistence, you would need to update these to call Supabase 
+  // INSERT, UPDATE, and DELETE methods.
   const addProperty = (property: Property) => {
+    // Supabase INSERT implementation required here
     setProperties([...properties, property]);
   };
 
   const updateProperty = (id: string, updatedProperty: Partial<Property>) => {
+    // Supabase UPDATE implementation required here
     setProperties(properties.map(p => 
       p.id === id ? { ...p, ...updatedProperty } : p
     ));
   };
 
   const deleteProperty = (id: string) => {
+    // Supabase DELETE implementation required here
     setProperties(properties.filter(p => p.id !== id));
   };
 
@@ -51,6 +80,8 @@ export const PropertyProvider = ({ children }: { children: ReactNode }) => {
         getPropertyById,
         savedProperties,
         toggleSaveProperty,
+        isLoading, // Expose loading state
+        error, // Expose error state
       }}
     >
       {children}
@@ -58,10 +89,5 @@ export const PropertyProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-export const useProperties = () => {
-  const context = useContext(PropertyContext);
-  if (!context) {
-    throw new Error("useProperties must be used within PropertyProvider");
-  }
-  return context;
-};
+// Note: `useProperties` hook is provided in `src/contexts/useProperties.ts`
+// to avoid React Fast Refresh errors when a file exports non-component values.
