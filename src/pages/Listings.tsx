@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useProperties } from "@/contexts/PropertyContext";
+import { useProperties } from "@/contexts/useProperties";
 import Header from "@/components/Header";
 import PropertyCard from "@/components/PropertyCard";
 import SearchBar from "@/components/SearchBar";

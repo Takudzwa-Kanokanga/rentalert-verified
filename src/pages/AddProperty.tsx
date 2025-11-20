@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useProperties } from "@/contexts/PropertyContext";
+import { useProperties } from "@/contexts/useProperties";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,10 +49,11 @@ const AddProperty = () => {
       featured: formData.featured,
       description: formData.description,
       agent: {
+        id: 0,
         name: "Your Name",
-        verified: true,
+        is_verified: true,
         rating: 4.8,
-        properties: 1,
+        properties_listed: 1,
       },
       amenities: formData.amenities.split(",").map(a => a.trim()).filter(Boolean),
     };

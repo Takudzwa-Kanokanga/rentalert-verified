@@ -1,5 +1,5 @@
 import { useParams, useNavigate } from "react-router-dom";
-import { useProperties } from "@/contexts/PropertyContext";
+import { useProperties } from "@/contexts/useProperties";
 import Header from "@/components/Header";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -127,7 +127,7 @@ const PropertyDetails = () => {
               <div className="mb-6">
                 <p className="font-semibold text-foreground">{property.agent.name}</p>
                 <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                  {property.agent.verified && (
+                  {property.agent.is_verified && (
                     <Badge variant="outline" className="border-success text-success text-xs">
                       <ShieldCheck className="w-3 h-3 mr-1" />
                       Verified
@@ -135,7 +135,7 @@ const PropertyDetails = () => {
                   )}
                   <span>★ {property.agent.rating}</span>
                   <span>•</span>
-                  <span>{property.agent.properties} properties</span>
+                  <span>{property.agent.properties_listed} properties</span>
                 </div>
               </div>
               <div className="space-y-3">

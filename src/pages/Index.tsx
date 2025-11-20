@@ -4,7 +4,7 @@ import SearchBar from "@/components/SearchBar";
 import PropertyCard from "@/components/PropertyCard";
 import { Button } from "@/components/ui/button";
 import { ShieldCheck, Eye, MessageSquare, Award } from "lucide-react";
-import { useProperties } from "@/contexts/PropertyContext";
+import { useProperties } from "@/contexts/useProperties";
 import heroBackground from "@/assets/hero-background.jpg";
 
 const Index = () => {

@@ -91,3 +91,6 @@ export const PropertyProvider = ({ children }: { children: ReactNode }) => {
 
 // Note: `useProperties` hook is provided in `src/contexts/useProperties.ts`
 // to avoid React Fast Refresh errors when a file exports non-component values.
+
+// The hook is provided from `src/contexts/useProperties.ts` to avoid
+// React Fast Refresh issues when exporting non-component values.
