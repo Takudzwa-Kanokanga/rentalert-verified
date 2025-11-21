@@ -1,92 +1,187 @@
-import React, { useState, useEffect, ReactNode } from "react";
-import {
-  PropertyContext as CorePropertyContext,
-  fetchPropertiesWithAgents,
-  createProperty,
-  updatePropertyById,
-  deletePropertyById,
-  Property,
-  PropertyContextType,
-} from "./propertyCore";
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from "react";
+import { supabase, Agent as SupabaseAgent, DbProperty } from "@/lib/supabaseClient";
 
-// Use the context from the core module (this file only exports the provider component)
-const PropertyContext = CorePropertyContext;
+// 1. Define the Application Property Type (camelCase, includes joined Agent)
+export interface Property {
+  id: string;
+  title: string;
+  location: string;
+  price: number;
+  bedrooms: number;
+  bathrooms: number;
+  area: number;
+  image: string;
+  verified: boolean;
+  rating: number;
+  reviews: number;
+  virtualTour: boolean;
+  featured: boolean;
+  description: string;
+  amenities: string[];
+  agent: SupabaseAgent;
+}
 
+// Helper type for the raw data structure returned by Supabase
+type RawSupabaseProperty = DbProperty & {
+  agent: SupabaseAgent;
+};
+
+interface PropertyContextType {
+  properties: Property[];
+  addProperty: (propertyData: Omit<Property, 'id' | 'agent' | 'verified' | 'rating' | 'reviews' | 'featured'>) => Promise<boolean>;
+  updateProperty: (id: string, updatedFields: Partial<Omit<Property, 'id' | 'agent'>>) => Promise<boolean>;
+  deleteProperty: (id: string) => Promise<boolean>;
+  getPropertyById: (id: string) => Property | undefined;
+  savedProperties: string[];
+  toggleSaveProperty: (id: string) => void;
+  isLoading: boolean;
+  error: Error | null;
+}
+
+const PropertyContext = createContext<PropertyContextType | undefined>(undefined);
+
+// --- Core Data Fetching Logic ---
+const fetchPropertiesWithAgents = async (): Promise<Property[]> => {
+  const { data, error } = await supabase
+    .from("properties")
+    .select(
+      `
+      *,
+      agent:agents (id, name, is_verified, rating, properties_listed)
+    `
+    );
+
+  if (error) {
+    console.error("Supabase Fetch Error:", error);
+    throw new Error(`Failed to fetch properties: ${error.message}`);
+  }
+
+  // Map the Supabase data structure to the application's expected Property structure
+  return (data as RawSupabaseProperty[]).map((p) => ({
+    id: p.id!,
+    title: p.title,
+    location: p.location,
+    price: Number(p.price),
+    bedrooms: p.bedrooms,
+    bathrooms: p.bathrooms,
+    area: p.area,
+    image: p.image_url || "",
+    verified: p.is_verified || false,
+    rating: Number(p.rating),
+    reviews: p.reviews_count || 0,
+    virtualTour: p.has_virtual_tour || false,
+    featured: p.is_featured || false,
+    description: p.description || "",
+    amenities: p.amenities || [],
+    agent: p.agent,
+  }));
+};
 
 export const PropertyProvider = ({ children }: { children: ReactNode }) => {
-  // Initialize properties as an empty array, not dummyProperties
-  const [properties, setProperties] = useState<Property[]>([]); 
+  const [properties, setProperties] = useState<Property[]>([]);
   const [savedProperties, setSavedProperties] = useState<string[]>([]);
-  // Initialize loading and error states
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
   
-  // Use useEffect to fetch data from Supabase on component mount
+  // Refresh function that can be called after any CRUD operation
+  const refreshProperties = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const fetchedProperties = await fetchPropertiesWithAgents();
+      setProperties(fetchedProperties);
+    } catch (err) {
+      if (err instanceof Error) {
+          setError(err);
+      } else {
+          setError(new Error("An unknown error occurred during property refresh."));
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Initial load
   useEffect(() => {
-    const loadProperties = async () => {
-      setIsLoading(true);
-      setError(null);
-      try {
-        const fetchedProperties = await fetchPropertiesWithAgents();
-        setProperties(fetchedProperties);
-      } catch (err) {
-        if (err instanceof Error) {
-            setError(err);
-        } else {
-            setError(new Error("An unknown error occurred during property fetch."));
-        }
-      } finally {
-        setIsLoading(false);
-      }
+    refreshProperties();
+  }, [refreshProperties]);
+
+
+  // --- CRUD Implementations ---
+
+  // NOTE: For simplicity, all new properties are assigned to Agent ID 1 (John Mapfumo)
+  const addProperty = async (propertyData: Omit<Property, 'id' | 'agent' | 'verified' | 'rating' | 'reviews' | 'featured'>): Promise<boolean> => {
+    const newDbProperty: DbProperty = {
+      ...propertyData,
+      image_url: propertyData.image, // Map back to snake_case for DB
+      agent_id: 1, // Default agent for new properties
     };
-    loadProperties();
-  }, []); 
 
+    const { error } = await supabase
+      .from("properties")
+      .insert(newDbProperty);
 
-  // Persisted CRUD functions using Supabase helpers
-  const addProperty = async (property: Property) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const created = await createProperty(property);
-      if (created) setProperties((prev) => [...prev, created]);
-      return created;
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setIsLoading(false);
+    if (error) {
+      console.error("Supabase INSERT Error:", error);
+      return false;
     }
+
+    await refreshProperties(); // Re-fetch all properties to update state
+    return true;
   };
 
-  const updateProperty = async (id: string, updatedProperty: Partial<Property>) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const updated = await updatePropertyById(id, updatedProperty);
-      if (updated) {
-        setProperties((prev) => prev.map((p) => (p.id === id ? { ...p, ...updated } : p)));
-      }
-      return updated;
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setIsLoading(false);
+
+  const updateProperty = async (id: string, updatedFields: Partial<Omit<Property, 'id' | 'agent'>>): Promise<boolean> => {
+    // Map client-side camelCase fields back to snake_case for the database
+    const updatePayload: Partial<DbProperty> = {
+      title: updatedFields.title,
+      location: updatedFields.location,
+      price: updatedFields.price,
+      bedrooms: updatedFields.bedrooms,
+      bathrooms: updatedFields.bathrooms,
+      area: updatedFields.area,
+      description: updatedFields.description,
+      amenities: updatedFields.amenities,
+      image_url: updatedFields.image,
+      is_verified: updatedFields.verified,
+      reviews_count: updatedFields.reviews,
+      has_virtual_tour: updatedFields.virtualTour,
+      is_featured: updatedFields.featured,
+      // agent_id should usually not be updated, but you can add it if needed
+    };
+
+    const { error } = await supabase
+      .from("properties")
+      .update(updatePayload)
+      .eq("id", id);
+
+    if (error) {
+      console.error("Supabase UPDATE Error:", error);
+      return false;
     }
+
+    await refreshProperties(); // Re-fetch all properties to update state
+    return true;
   };
 
-  const deleteProperty = async (id: string) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      await deletePropertyById(id);
-      setProperties((prev) => prev.filter((p) => p.id !== id));
-    } catch (err) {
-      setError(err instanceof Error ? err : new Error(String(err)));
-    } finally {
-      setIsLoading(false);
+
+  const deleteProperty = async (id: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from("properties")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error("Supabase DELETE Error:", error);
+      return false;
     }
+
+    await refreshProperties(); // Re-fetch all properties to update state
+    return true;
   };
 
+
+  // --- Non-Database Operations ---
   const getPropertyById = (id: string) => {
     return properties.find(p => p.id === id);
   };
@@ -107,8 +202,8 @@ export const PropertyProvider = ({ children }: { children: ReactNode }) => {
         getPropertyById,
         savedProperties,
         toggleSaveProperty,
-        isLoading, // Expose loading state
-        error, // Expose error state
+        isLoading,
+        error,
       }}
     >
       {children}
@@ -116,8 +211,10 @@ export const PropertyProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Note: `useProperties` hook is provided in `src/contexts/useProperties.ts`
-// to avoid React Fast Refresh errors when a file exports non-component values.
-
-// The hook is provided from `src/contexts/useProperties.ts` to avoid
-// React Fast Refresh issues when exporting non-component values.
+export const useProperties = () => {
+  const context = useContext(PropertyContext);
+  if (!context) {
+    throw new Error("useProperties must be used within PropertyProvider");
+  }
+  return context;
+};

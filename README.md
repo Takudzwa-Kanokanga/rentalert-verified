@@ -2,7 +2,7 @@
 
 ## Project info
 
-**URL**: 
+**URL**: https://rentalert-verified.vercel.app/
 
 ## How can I edit this code?
 
